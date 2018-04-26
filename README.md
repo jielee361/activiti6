@@ -1,160 +1,27 @@
-## activiti入门示例
+## 流程存储
 
-### 1.activiti包引入
+### 流程文件部署
 
-[pom.xml](./pom.xml)
-
-```
-<dependency>
-  <groupId>org.activiti</groupId>
-  <artifactId>activiti-engine</artifactId>
-  <version>6.0.0</version>
-</dependency>
-```
-
-### 2.新建activiti.cfg.xml配置文件
-
-[官方配置文件](https://www.activiti.org/userguide/6.latest/#_configuration)
-
-[/src/main/resources/activiti.cfg.xml](./src/main/resources/activiti.cfg.xml)
-
-### 3.创建流程文件
-
-[src/main/resources/first.bpmn20.xml](./src/main/resources/first.bpmn20.xml)
-
-![](./doc/act-22.png)
-
-### 4.加载流程文件并启动流程
-
-
-### 5.ORACLE排坑说明
-
-在使用如下配置的时候,databaseSchemaUpdate为true,原本以为会创建数据库表
-
-```
- <bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-    <property name="jdbcUrl" value="jdbc:oracle:thin:@//192.168.17.135:1521/pdb1"/>
-    <property name="jdbcDriver" value="oracle.jdbc.OracleDriver"/>
-    <property name="jdbcUsername" value="act_01"/>
-    <property name="jdbcPassword" value="act_01"/>
-    <property name="databaseSchemaUpdate" value="true"/>
-    <property name="asyncExecutorActivate" value="false" />
-</bean>
-```
-
-运行me.chilam.FirstActiviti类发现报错,发现是schema没有设置，
-
-```
-### Error querying database.  Cause: java.sql.SQLSyntaxErrorException: ORA-00942: table or view does not exist
-
-### The error may exist in org/activiti/db/mapping/entity/Property.xml
-### The error may involve defaultParameterMap
-### The error occurred while setting parameters
-### SQL: select VALUE_ from ACT_GE_PROPERTY where NAME_ = 'schema.version'
-### Cause: java.sql.SQLSyntaxErrorException: ORA-00942: table or view does not exist
-```
-
-修改配置文件为如下：增加<property name="databaseSchema" value="act_01"/>
-
-```
-<bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-    <property name="jdbcUrl" value="jdbc:oracle:thin:@//192.168.17.135:1521/pdb1"/>
-    <property name="jdbcDriver" value="oracle.jdbc.OracleDriver"/>
-    <property name="jdbcUsername" value="act_01"/>
-    <property name="jdbcPassword" value="act_01"/>
-    <property name="databaseSchema" value="act_01"/>
-    <property name="databaseSchemaUpdate" value="create-drop"/>
-    <property name="asyncExecutorActivate" value="false" />
-</bean>
-```
-
-再次运行me.chilam.FirstActiviti类发现报错
-
-```
- 20:33:10,069 ERROR CommandContext:122 - Error while closing command context
-  java.lang.AbstractMethodError: oracle.jdbc.driver.T4CConnection.setSchema(Ljava/lang/String;)V
-	at sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
-	at sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)
-	at sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
-	at java.lang.reflect.Method.invoke(Method.java:498)
-```
-
-分析原因以为是oralce数据驱动原因，后来发现并不是,增加属性databaseTablePrefix，改动配置如下：
-
-```
- <bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-    <property name="jdbcUrl" value="jdbc:oracle:thin:@//192.168.17.135:1521/pdb1"/>
-    <property name="jdbcDriver" value="oracle.jdbc.OracleDriver"/>
-    <property name="jdbcUsername" value="act_01"/>
-    <property name="jdbcPassword" value="act_01"/>
-    <property name="databaseTablePrefix" value="ACT"/>
-    <property name="databaseSchemaUpdate" value="true"/>
-    <property name="asyncExecutorActivate" value="false" />
-</bean>
-
-```
-
-但是还是发现报错,发现多拼接一个前缀ACT
-
-```
-### The error may exist in org/activiti/db/mapping/entity/Property.xml
-### The error may involve org.activiti.engine.impl.persistence.entity.PropertyEntityImpl.selectProperty-Inline
-### The error occurred while setting parameters
-### SQL: select * from ACTACT_GE_PROPERTY where NAME_ = ?
-### Cause: java.sql.SQLSyntaxErrorException: ORA-00942: table or view does not exist
-
-```
-
-但是此时将配置修改如下：
-
-```
- <bean id="processEngineConfiguration" class="org.activiti.engine.impl.cfg.StandaloneProcessEngineConfiguration">
-        <property name="jdbcUrl" value="jdbc:oracle:thin:@//192.168.17.135:1521/pdb1"/>
-        <property name="jdbcDriver" value="oracle.jdbc.OracleDriver"/>
-        <property name="jdbcUsername" value="act_01"/>
-        <property name="jdbcPassword" value="act_01"/>
-        <property name="databaseSchemaUpdate" value="false"/>
-        <property name="asyncExecutorActivate" value="false" />
-    </bean>
-```
-
-在运行me.chilam.FirstActiviti这个类，就正常了
-
-```
- 第一个任务，当前任务名称: 费用申请
-第二个任务，当前任务名称：申请审批
-流程结束后，查找任务: null
-```
-
-
-
-
-
-
-
-
+    RepositoryService负责对流程文件的部署以及流程的定义进行管理，不管是JBPM还是Activiti等工作流引擎，
+    都会产生流程文件，工作流引擎需要对这些文件进行管理，这些文件包括流程描述文件，流程图等。
     
+### 流程文件部署
 
+#### org.activiti.engine.repository.Deployment 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    Deployment对象是一个接口，一个Deployment实例表示一条ACT_RE_DEPLOYMENT表的数据，
+    同样，Deployment也遵循Activiti的实体命名规则，子接口为DeploymentEntityImpl。
     
+#### org.activiti.engine.repository.DeploymentBuilder
+
+[me.chilam.DeploymentBuilderDemo](./src/main/java/me/chilam/DeploymentBuilderDemo.java)
+
+#### 流程定义权限
+
+    对于一个用户或者用户组是否能操作(查看)某个流程定义的数据，需要进行相应的流程定义权限设置。在Activit中并没有
+    对流程定义的权限进行检查，而是提供一种反向方法，让调用者去管理这些权限数据，然后提供相应的API让使用人决定哪些数据
+    可以被查询。
+   
+- 设置流程定义的用户权限
+
+[me.chilam.UserCandidate](./src/main/java/me/chilam/UserCandidate.java)
